@@ -4,8 +4,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ProductSchema } from "@/lib/validators";
 import { ZodError } from "zod";
-// ⬇️ dùng runtime library thay vì Prisma.PrismaClientKnownRequestError
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -13,7 +11,11 @@ export async function GET(req: Request) {
   const page = Math.max(1, Number(searchParams.get("page") || 1));
   const limit = Math.max(1, Math.min(50, Number(searchParams.get("limit") || 12)));
 
-  const where = q ? { name: { contains: q, mode: "insensitive" } } : {};
+  // ❗️không annotate kiểu, để TS infer
+  const where = q
+    ? { name: { contains: q, mode: "insensitive" as const } }
+    : undefined; // để undefined thay vì {} cho gọn type
+
   const [total, data] = await Promise.all([
     prisma.product.count({ where }),
     prisma.product.findMany({
@@ -37,30 +39,20 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const data = ProductSchema.parse(body);
-
     const created = await prisma.product.create({
       data: {
         name: data.name,
         description: data.description,
-        price: data.price,      // number OK cho DECIMAL
+        price: data.price,
         image: data.image ?? null,
       },
     });
-
     return NextResponse.json(created, { status: 201 });
   } catch (e: unknown) {
-    console.error("POST /api/products error:", e);
-
     if (e instanceof ZodError) {
       return NextResponse.json(
         { error: "ValidationError", details: e.flatten() },
-        { status: 400 }
-      );
-    }
-    if (e instanceof PrismaClientKnownRequestError) {
-      return NextResponse.json(
-        { error: "PrismaError", code: e.code, message: e.message },
-        { status: 500 }
+        { status: 400 },
       );
     }
     return NextResponse.json({ error: "InternalServerError" }, { status: 500 });
