@@ -1,9 +1,11 @@
-export const runtime = "nodejs"; // đảm bảo không chạy Edge
+export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ProductSchema } from "@/lib/validators";
-import { Prisma } from "@prisma/client";
+import { ZodError } from "zod";
+// ⬇️ dùng runtime library thay vì Prisma.PrismaClientKnownRequestError
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -22,34 +24,45 @@ export async function GET(req: Request) {
     }),
   ]);
 
-  return NextResponse.json({ data, page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) });
+  return NextResponse.json({
+    data,
+    page,
+    limit,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  });
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const data = ProductSchema.parse(body); // validate
+    const data = ProductSchema.parse(body);
 
     const created = await prisma.product.create({
       data: {
         name: data.name,
         description: data.description,
-        // 🔧 ép sang Prisma.Decimal để tránh lỗi runtime Decimal
-        price: data.price,
+        price: data.price,      // number OK cho DECIMAL
         image: data.image ?? null,
       },
     });
 
     return NextResponse.json(created, { status: 201 });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("POST /api/products error:", e);
-    if (e?.name === "ZodError") {
-      return NextResponse.json({ error: "ValidationError", details: e.flatten() }, { status: 400 });
+
+    if (e instanceof ZodError) {
+      return NextResponse.json(
+        { error: "ValidationError", details: e.flatten() },
+        { status: 400 }
+      );
     }
-    // Prisma lỗi thường gặp: unique/constraint/validation
-    if (e?.code) {
-      return NextResponse.json({ error: "PrismaError", code: e.code, message: e.message }, { status: 500 });
+    if (e instanceof PrismaClientKnownRequestError) {
+      return NextResponse.json(
+        { error: "PrismaError", code: e.code, message: e.message },
+        { status: 500 }
+      );
     }
-    return NextResponse.json({ error: "InternalServerError", message: String(e?.message ?? e) }, { status: 500 });
+    return NextResponse.json({ error: "InternalServerError" }, { status: 500 });
   }
 }
