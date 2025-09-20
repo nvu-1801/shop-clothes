@@ -6,12 +6,11 @@ import SafeImage from "@/components/SafeImage";
 const formatVND = (n: number) =>
   Number(n).toLocaleString("vi-VN", { style: "currency", currency: "VND" });
 
-export default async function ProductDetail({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const p = await prisma.product.findUnique({ where: { id: params.id } });
+export default async function ProductDetail(
+  props: { params: Promise<{ id: string }> } // 👈 Promise
+) {
+  const { id } = await props.params;
+  const p = await prisma.product.findUnique({ where: { id } });
   if (!p) return <div className="p-6">Not found</div>;
 
   return (
