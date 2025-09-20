@@ -8,9 +8,8 @@ export async function GET() {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
-    // KHÔNG dùng any
     const message = e instanceof Error ? e.message : "Unknown error";
-    console.error("HEALTH ERROR:", e);
+    console.error("HEALTH ERROR:", e); // xem ở Vercel → Functions logs
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
