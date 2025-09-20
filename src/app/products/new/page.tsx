@@ -1,6 +1,8 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
-import ProductForm from '@/components/ProductForm';
+export const runtime = "nodejs";
+
+import ProductForm from "@/components/ProductForm";
 export default function NewProductPage() {
   return (
     <div className="max-w-5xl mx-auto p-6">

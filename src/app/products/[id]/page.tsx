@@ -1,5 +1,7 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const runtime = "nodejs";
+
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import DeleteProductButton from "@/components/DeleteProductButton";
